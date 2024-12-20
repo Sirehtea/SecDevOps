@@ -40,13 +40,13 @@ jobs:
       continue-on-error: true
       id: safety_check
 
-    - name: Check for secrets with TruffleHog
-      uses: trufflesecurity/trufflehog@v3.0.0
+    - name: Scan secrets with TruffleHog
+      uses: edplato/trufflehog-actions-scan@master
       with:
-        entryPoint: .  # Set to the root of your repository
-        args: "--no-git"  # Additional arguments if needed
+        fetch-depth: 0
+        ref: ${{ github.head_ref }}
       continue-on-error: true
-      id: trufflehog_check
+      id: trufflehog_new_check
 
     - name: Fail the PR if any check fails
       run: |
@@ -57,7 +57,10 @@ jobs:
           echo "Dependency check failed"
           exit 1
         elif [[ "${{ steps.trufflehog_check.outcome }}" == "failure" ]]; then
-          echo "Secret scan failed"
+          echo "Original TruffleHog scan failed"
+          exit 1
+        elif [[ "${{ steps.trufflehog_new_check.outcome }}" == "failure" ]]; then
+          echo "New TruffleHog scan failed"
           exit 1
         fi
         echo "All checks passed"
