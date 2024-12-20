@@ -1,0 +1,51 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Secure Python Pipeline
+
+on:
+  pull_request:
+    branches: [ "main", "dev" ]
+  schedule:
+    - cron: '0 0 * * 0'
+
+permissions:
+  contents: read
+
+jobs:
+  security_checks:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Review Dependencies
+      uses: actions/dependency-review-action@v2
+      id: dependency_review
+
+    - name: Scan for secrets
+      uses: secret-scanner/action@v1
+      id: secret_scan
+
+    - name: Run SAST scan
+      uses: marketplacer/sast-scan-action@v1
+      id: sast_scan
+
+    - name: Check for failed security scans
+      run: |
+        if [[ "${{ steps.dependency_review.outputs.failed }}" == "true" ]] || \
+           [[ "${{ steps.secret_scan.outputs.failed }}" == "true" ]] || \
+           [[ "${{ steps.sast_scan.outputs.failed }}" == "true" ]]; then
+          echo "Security checks failed. Blocking the pull request."
+          exit 1
+        fi
