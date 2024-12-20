@@ -33,22 +33,23 @@ jobs:
       run: |
         pip install bandit
         bandit -r . -f html -o bandit-report.html
-      continue-on-error: false
+      continue-on-error: false  # Fail the workflow if this check finds issues
 
     - name: Check for vulnerable dependencies with Safety
       run: |
         pip install safety
         safety check --full-report --output-file=safety-report.json
-      continue-on-error: false
+      continue-on-error: false  # Fail the workflow if this check finds issues
 
-    - name: Check for secrets with GitGuardian
-      uses: gitguardian/action-secrets-scan@v2
+    - name: Check for secrets with TruffleHog
+      uses: trufflesecurity/trufflehog@v3.0.0
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Fail the PR if any check fails
-      if: failure()
+      if: failure()  # Fail the PR if any of the above checks failed
       run: |
         echo "One or more security checks failed, please fix them before merging."
         exit 1
+
 
