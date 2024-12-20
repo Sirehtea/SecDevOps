@@ -1,2 +1,2 @@
 
-print("erm") #SIGMA
+print("erm") #SIGMA SIGMA ON THE WALL
