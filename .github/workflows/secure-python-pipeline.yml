@@ -14,44 +14,60 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      # Checkout the code
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
 
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v3
-      with:
-        python-version: "3.10"
+      # Set up Python
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.10"
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-    - name: Run SAST with Bandit
-      run: |
-        pip install bandit
-        bandit -r .
-      continue-on-error: false
-      id: bandit_check
+      # Run SAST with Bandit
+      - name: Run SAST with Bandit
+        run: |
+          pip install bandit
+          bandit -r .
+        continue-on-error: true
+        id: bandit_check
 
-    - name: Check for vulnerable dependencies with Safety
-      run: |
-        pip install safety
-        safety check
-      continue-on-error: false
-      id: safety_check
+      # Check for vulnerable dependencies with Safety
+      - name: Check for vulnerable dependencies with Safety
+        run: |
+          pip install safety
+          safety check
+        continue-on-error: true
+        id: safety_check
 
-    - name: Scan secrets with TruffleHog
-      uses: edplato/trufflehog-actions-scan@master
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+      # Check for secrets with TruffleHog (edplato version)
+      - name: Run TruffleHog scan
+        uses: edplato/trufflehog-actions-scan@master
+        with:
+          entryPoint: .  # The root of the repository
+          args: "--no-git"  # Additional arguments if needed
+        continue-on-error: true
+        id: trufflehog_check
 
-    - name: Fail the PR if any check fails
-      run: |
-        if [[ "${{ steps.bandit_check.outcome }}" == "failure" ]]; then
-          echo "SAST check failed"
-          exit 1
-        elif [[ "${{ steps.safety_check.outcome }}" == "failure" ]]; then
-          echo "Dependency check failed"
-          exit 1
-        fi
-        echo "All checks passed"
+      # Fail the PR if any check fails
+      - name: Fail the PR if any check fails
+        run: |
+          if [[ "${{ steps.bandit_check.outcome }}" == "failure" ]]; then
+            echo "SAST check (Bandit) failed"
+            exit 1
+          elif [[ "${{ steps.safety_check.outcome }}" == "failure" ]]; then
+            echo "Dependency check (Safety) failed"
+            exit 1
+          elif [[ "${{ steps.trufflehog_check.outcome }}" == "failure" ]]; then
+            echo "Secrets check (TruffleHog) failed"
+            exit 1
+          fi
+          echo "All checks passed"
