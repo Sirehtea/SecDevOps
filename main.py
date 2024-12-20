@@ -1,3 +1,3 @@
-api_key = "12345abcde67890fghijk"
+SECRET_KEY = "12345-this-should-trigger-secrets-scan"
 
-print("harharhar")
+print("erm")
