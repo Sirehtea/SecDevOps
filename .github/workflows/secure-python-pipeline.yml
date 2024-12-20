@@ -7,7 +7,7 @@ on:
   pull_request:
     branches: [ "main", "dev" ]
   schedule:
-    - cron: '0 0 * * 0'
+    - cron: '0 0 * * 0'  # Run once a week
 
 permissions:
   contents: read
@@ -29,23 +29,26 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-    - name: Review Dependencies
-      uses: actions/dependency-review-action@v2
-      id: dependency_review
-
-    - name: Scan for secrets
-      uses: secret-scanner/action@v1
-      id: secret_scan
-
-    - name: Run SAST scan
-      uses: marketplacer/sast-scan-action@v1
-      id: sast_scan
-
-    - name: Check for failed security scans
+    - name: Run SAST with Bandit
       run: |
-        if [[ "${{ steps.dependency_review.outputs.failed }}" == "true" ]] || \
-           [[ "${{ steps.secret_scan.outputs.failed }}" == "true" ]] || \
-           [[ "${{ steps.sast_scan.outputs.failed }}" == "true" ]]; then
-          echo "Security checks failed. Blocking the pull request."
-          exit 1
-        fi
+        pip install bandit
+        bandit -r . -f html -o bandit-report.html
+      continue-on-error: false
+
+    - name: Check for vulnerable dependencies with Safety
+      run: |
+        pip install safety
+        safety check --full-report --output-file=safety-report.json
+      continue-on-error: false
+
+    - name: Check for secrets with GitGuardian
+      uses: gitguardian/action-secrets-scan@v2
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Fail the PR if any check fails
+      if: failure()
+      run: |
+        echo "One or more security checks failed, please fix them before merging."
+        exit 1
+
