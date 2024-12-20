@@ -46,9 +46,11 @@ jobs:
     - name: Check for secrets with TruffleHog
       uses: trufflesecurity/trufflehog@v3.0.0
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        entryPoint: .  # Set to the root of your repository
+        args: "--no-git"  # Additional arguments if needed
       continue-on-error: true
       id: trufflehog_check
+
 
     - name: Fail the PR if any check fails
       run: |
