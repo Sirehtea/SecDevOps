@@ -30,23 +30,21 @@ jobs:
       run: |
         pip install bandit
         bandit -r .
-      continue-on-error: true
+      continue-on-error: false  # Fail the workflow if this check finds issues
       id: bandit_check
 
     - name: Check for vulnerable dependencies with Safety
       run: |
         pip install safety
         safety check
-      continue-on-error: true
+      continue-on-error: false  # Fail the workflow if this check finds issues
       id: safety_check
 
-    - name: Scan secrets with TruffleHog
-      uses: edplato/trufflehog-actions-scan@master
-      with:
-        fetch-depth: 0
-        ref: ${{ github.head_ref }}
-      continue-on-error: true
-      id: trufflehog_new_check
+    - name: Check for secrets with Gitleaks
+      uses: gitleaks/gitleaks-action@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      id: gitleaks_check
 
     - name: Fail the PR if any check fails
       run: |
@@ -56,11 +54,8 @@ jobs:
         elif [[ "${{ steps.safety_check.outcome }}" == "failure" ]]; then
           echo "Dependency check failed"
           exit 1
-        elif [[ "${{ steps.trufflehog_check.outcome }}" == "failure" ]]; then
-          echo "Original TruffleHog scan failed"
-          exit 1
-        elif [[ "${{ steps.trufflehog_new_check.outcome }}" == "failure" ]]; then
-          echo "New TruffleHog scan failed"
+        elif [[ "${{ steps.gitleaks_check.outcome }}" == "failure" ]]; then
+          echo "Secrets scan failed"
           exit 1
         fi
         echo "All checks passed"
