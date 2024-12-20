@@ -1,6 +1,3 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
-
 name: Secure Python Pipeline
 
 on:
@@ -51,7 +48,6 @@ jobs:
       continue-on-error: true
       id: trufflehog_check
 
-
     - name: Fail the PR if any check fails
       run: |
         if [[ "${{ steps.bandit_check.outcome }}" == "failure" ]]; then
@@ -65,7 +61,3 @@ jobs:
           exit 1
         fi
         echo "All checks passed"
-
-
-
-
